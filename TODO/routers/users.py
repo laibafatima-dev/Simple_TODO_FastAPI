@@ -8,7 +8,7 @@ router = APIRouter(
 )
 get_db = database.get_db
 
-@router.put("/user")
+@router.put("/user", response_model=schemas.ShowUsers, status_code = status.HTTP_200_OK)
 def create_user(request : schemas.User, db: Session = Depends(get_db)):
     return user.create_user(request, db)
 
