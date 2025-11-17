@@ -9,11 +9,10 @@ class TODODB(Base):
     __tablename__ = "TODOTABLE"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True, nullable=False)
-    id_by_user = Column(Integer, unique=True, nullable=False)
     description = Column(String)
     status = Column(Enum(task_status.TaskStatus), default=task_status.TaskStatus.pending)
 
-    # who created the task
+    # who created the task                                                                                                                                                                                                                                                                                                                                                                                                                                           
     creator = Column(String, ForeignKey("Users.username"))
     task_creator = relationship(
         "Users",
@@ -24,9 +23,15 @@ class TODODB(Base):
     # who assigned the task
     assigner = Column(String, ForeignKey("Users.username"))
     task_assigner = relationship(
-        "Users",
+        "Users",                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
         foreign_keys=[assigner],          
         back_populates="assigner_user"
+    )
+
+    assigned_to = Column(String, ForeignKey("Users.username"))
+    task_assigned_to = relationship(
+        "Users", foreign_keys = [assigned_to],
+        back_populates = 'assigned_to_user'
     )
 
 
@@ -53,4 +58,10 @@ class Users(Base):
         "TODODB",
         foreign_keys="TODODB.assigner",  
         back_populates="task_assigner"
+    )
+
+    assigned_to_user = relationship(
+        "TODODB",
+        foreign_keys = 'TODODB.assigned_to',
+        back_populates='task_assigned_to'
     )

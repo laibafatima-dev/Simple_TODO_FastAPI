@@ -5,7 +5,6 @@ from uuid import UUID
 from .enums import roles, task_status
 
 class TODO(BaseModel):
-    id_by_user : int
     description: str
     status: task_status.TaskStatus = task_status.TaskStatus.pending
 
@@ -17,7 +16,6 @@ class User(BaseModel):
     name: Optional[str] = Field(None)
     email: EmailStr
     password: str = Field(..., min_length=8, max_length=15)
-    role : roles.UserRolesEnum = roles.UserRolesEnum.user
 
     # ---- PASSWORD VALIDATION ----
 
@@ -42,6 +40,7 @@ class User(BaseModel):
 
 
 class ShowUsers(BaseModel):
+    id : UUID
     username: str
     email: str
     role : roles.UserRolesEnum = roles.UserRolesEnum.user
@@ -51,11 +50,12 @@ class ShowUsers(BaseModel):
 
 
 class ShowTODO(BaseModel):
-    id_by_user : int
+    id : UUID
     description: str
     status: task_status.TaskStatus
     task_creator: ShowUsers
     task_assigner: Optional[ShowUsers] = None
+    task_assigned_to : Optional[ShowUsers] = None
 
     class Config:
         from_attributes = True
@@ -63,6 +63,7 @@ class ShowTODO(BaseModel):
 
 
 class UserLogin(BaseModel):
+    id : UUID
     email: EmailStr
     password: str
 
