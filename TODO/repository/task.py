@@ -1,52 +1,102 @@
 from .. import models, schemas
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
+from uuid import UUID
 
-def get_all_tasks(db: Session):
-    tasks = db.query(models.TODODB).all()
+
+
+def get_all_tasks(db: Session, current_user):
+    if current_user['role'] == 'admin':
+            tasks = db.query(models.TODODB).all()
+    else:
+        tasks = db.query(models.TODODB).filter(models.TODODB.creator == current_user['username']).all()
+
+    if not tasks:
+        raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail="no task created by this user")
     return tasks
 
-def create(request: schemas.TODO, db: Session):
-    new_item = models.TODODB(description = request.description, status = request.status, owner_of_task = 1)
-    db.add(new_item)
-    db.commit()
-    db.refresh(new_item)
-    return new_item
 
-def delete(item_id: int, db: Session):
-    task = db.query(models.TODODB).filter(models.TODODB.id == item_id).first()
+
+def create(request: schemas.TODO, db: Session, current_user):    
+    creator = current_user["username"]
+
+    # Assign only if admin    
+
+    new_task = models.TODODB(
+        description=request.description,
+        status=request.status,
+        creator=creator,
+        assigner=None
+    )
+
+    db.add(new_task)
+    db.commit()
+    db.refresh(new_task)
+    return new_task
+
+
+
+
+
+def delete(task_id: UUID, db: Session, current_user):
+    task = db.query(models.TODODB).filter(models.TODODB.id == task_id).first()
+
     if not task:
-        raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail=f"item with this id {item_id} is not here and cab't be deleted")
-    
+        raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail=f"there is no task with this id {task_id} to delete")
+
+    if current_user['username'] != task.creator and current_user['username'] != "admin":
+        raise HTTPException (status_code=status.HTTP_401_UNAUTHORIZED, detail=f"you are unauthorize to delete this task")
+
     db.delete(task)
     db.commit()
-    return 
+    return {"deleted successfully"}
 
-def update_item(item_id: int, request: schemas.TODO, db: Session):
-    task = db.query(models.TODODB).filter(models.TODODB.id == item_id).first()
-    print("Incoming request data:", request)
+
+
+
+def update_task(task_id, request: schemas.TODO, db: Session, current_user):
+    task = db.query(models.TODODB).filter(models.TODODB.id == task_id).first()
 
 
     if not task:
-        raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail=f"there is no task with this id {item_id} to update")
+        raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail=f"there is no task with this id {task_id} to update")
+
+    if current_user['username'] != task.creator and current_user['username'] != "admin":
+        raise HTTPException (status_code=status.HTTP_401_UNAUTHORIZED, detail=f"you are unauthorize to update this task")
 
     task.description = request.description
     task.status = request.status
 
     db.commit()
     db.refresh(task)
-    return {"details": "Successfully updates"}
+    return task
 
 
-def get_specific_task(id: int, db: Session):
+def get_specific_task(id, db: Session):
     task = db.query(models.TODODB).filter(models.TODODB.id == id).first()
     if not task:
         raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail=f"The task with this id {id} is not found here")
     return task
 
-def add_item(request: models.TODODB, db: Session):
-    new_item = models.TODODB(description = request.description, status = request.status, owner_of_task = 1)
-    db.add(new_item)
+
+
+def assign_task(task_id,username : str , db: Session, current_user):
+   
+    if current_user['role'] != 'admin':
+        raise HTTPException (status_code=status.HTTP_401_UNAUTHORIZED, detail=f"you are unauthorize to assign task")
+    
+    task = db.query(models.TODODB).filter(models.TODODB.id == task_id).first()
+
+    if not task:
+        raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail=f"there is no task with this id {task_id} to assign")
+    
+    user = db.query(models.Users).filter(models.Users.username==username).first()
+
+    if not user:
+        raise HTTPException (status_code=status.HTTP_404_NOT_FOUND, detail="Invalid Username")
+    
+    task.assigner = current_user['role']
+    task.assigned_to = username
     db.commit()
-    db.refresh(new_item)
-    return new_item
+    return task
+    
